@@ -201,21 +201,21 @@
                                    (when (seq new-fields)
                                      (create-or-reactivate-field-chunk! table new-fields parent-id))
                                    (+ total-updated updated-chunk-count (count new-fields)))))
-                             (partition-all 1000 db-metadata)))
+                             (partition-all 1000 db-metadata))
 
-    ;; ok, loop thru Fields in OUR-METADATA. Mark Fields as inactive if they don't exist in DB-METADATA.
-    (sync-util/reduce-count (fn [inactive-count our-field]
-                              (sync-util/with-error-handling (format "Error checking if '%s' needs to be retired" (:name our-field))
-                                (if-let [db-field (matching-field-metadata our-field db-metadata)]
-                                  ;; if field exists in both metadata sets we just need to recursively check the nested fields
-                                  (if-let [our-nested-fields (seq (:nested-fields our-field))]
-                                    (+ inactive-count (sync-field-instances! table (:nested-fields db-field) (set our-nested-fields) (:id our-field)))
-                                    inactive-count)
-                                  ;; otherwise if field exists in our metadata but not DB metadata time to make it inactive
-                                  (do
-                                    (retire-field! table our-field)
-                                    (inc inactive-count)))))
-                            our-metadata)))
+     ;; ok, loop thru Fields in OUR-METADATA. Mark Fields as inactive if they don't exist in DB-METADATA.
+     (sync-util/reduce-count (fn [inactive-count our-field]
+                               (sync-util/with-error-handling (format "Error checking if '%s' needs to be retired" (:name our-field))
+                                 (if-let [db-field (matching-field-metadata our-field db-metadata)]
+                                   ;; if field exists in both metadata sets we just need to recursively check the nested fields
+                                   (if-let [our-nested-fields (seq (:nested-fields our-field))]
+                                     (+ inactive-count (sync-field-instances! table (:nested-fields db-field) (set our-nested-fields) (:id our-field)))
+                                     inactive-count)
+                                   ;; otherwise if field exists in our metadata but not DB metadata time to make it inactive
+                                   (do
+                                     (retire-field! table our-field)
+                                     (inc inactive-count)))))
+                             our-metadata))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -250,8 +250,8 @@
                                                {:special_type new-special-type})))
                                     ;; now recursively do the same for any nested fields
                                     (if-let [db-nested-fields (seq (:nested-fields db-field))]
-                                      (+ update-count (update-metadata! table (set db-nested-fields) (u/get-id field)))
-                                      update-count))
+                                      (+ (inc update-count) (update-metadata! table (set db-nested-fields) (u/get-id field)))
+                                      (inc update-count)))
                                   update-count)))
                             existing-fields)))
 
